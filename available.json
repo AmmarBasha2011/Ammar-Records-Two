@@ -1,0 +1,14 @@
+{
+  "surahs": {
+    "115": {
+      "surah": "115",
+      "name": "النفس تبكي على الدنيا",
+      "ayahs": 13,
+      "complete": true,
+      "weak_ayahs": [],
+      "min_sim": 1.0,
+      "avg_sim": 1.0,
+      "manual_revise": false
+    }
+  }
+}
