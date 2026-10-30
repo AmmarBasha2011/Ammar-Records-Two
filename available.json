@@ -9,6 +9,16 @@
       "min_sim": 1.0,
       "avg_sim": 1.0,
       "manual_revise": false
+    },
+    "116": {
+      "surah": "116",
+      "name": "قصيدة ليس الغريب",
+      "ayahs": 71,
+      "complete": true,
+      "weak_ayahs": [],
+      "min_sim": 1.0,
+      "avg_sim": 1.0,
+      "manual_revise": false
     }
   }
 }
