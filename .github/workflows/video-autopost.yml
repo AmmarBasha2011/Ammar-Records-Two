@@ -48,7 +48,7 @@ jobs:
           KEY=$(sed -n 1p pick.txt); NAME=$(sed -n 2p pick.txt)
           START=$(sed -n 3p pick.txt); END=$(sed -n 4p pick.txt)
           mkdir -p build
-          ffmpeg -y $(for a in $(seq -w $START $END); do echo -n "-i 115/$(printf '%03d' $a).mp3 "; done) \
+          ffmpeg -y $(for a in $(seq $((START-1)) $((END-1))); do echo -n "-i 115/$(printf '%03d' $a).mp3 "; done) \
             -filter_complex "[0:a]$(for i in $(seq 1 $((END-START))); do echo -n "[$i:a]"; done)concat=n=$((END-START+1)):v=0:a=1[aout]" \
             -map "[aout]" build/audio.mp3
           RAWBG=$(ls assets/backgrounds/*.{jpg,jpeg,png,webp} 2>/dev/null | shuf -n1)
