@@ -1,0 +1,85 @@
+name: Video Autopost (random surah -> webhook)
+
+# Generates a vertical (9:16) YouTube Short from a random surah/ayah range
+# using repo audio + backgrounds, then sends metadata to the sokt.io webhook
+# for YouTube upload (no direct YouTube API). Runs every 30 minutes.
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:         # manual trigger from Actions tab
+
+permissions:
+  contents: write   # needed for GitHub Release upload
+  actions: read
+
+jobs:
+  make-video:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install ffmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
+      - name: Pick random surah + ayah range
+        id: pick
+        run: |
+          python - <<'PY'
+          import os, json, random
+          av = json.load(open("available.json", encoding="utf-8"))["surahs"]
+          links = json.load(open("links.json", encoding="utf-8")).get("links", {})
+          keys = sorted(av, key=int)
+          key = random.choice(keys)
+          n = av[key]["ayahs"]
+          # SHORTS: 1-6 ayahs (YouTube Shorts max = 3 min / 180s; cap 175s in ffmpeg)
+          span = random.randint(1, min(6, n))
+          start = random.randint(1, n - span + 1)
+          end = start + span - 1
+          name = links.get(key, {}).get("name", f"surah-{key}")
+          with open("pick.txt", "w") as f:
+              f.write(f"{key}\n{name}\n{start}\n{end}\n")
+          print(f"picked surah {key} ({name}) ayahs {start}-{end} (SHORT)")
+          PY
+
+      - name: Build video with ffmpeg
+        run: |
+          KEY=$(sed -n 1p pick.txt); NAME=$(sed -n 2p pick.txt)
+          START=$(sed -n 3p pick.txt); END=$(sed -n 4p pick.txt)
+          mkdir -p build
+          # concatenate the ayah audio clips
+          ffmpeg -y $(for a in $(seq $START $END); do echo -n "-i $KEY/$(printf '%03d' $a).mp3 "; done) \
+            -filter_complex "[0:a]$(for i in $(seq 1 $((END-START))); do echo -n "[$i:a]"; done)concat=n=$((END-START+1)):v=0:a=1[aout]" \
+            -map "[aout]" build/audio.mp3
+          # pick a random background (prefer jpg/png; convert webp first)
+          RAWBG=$(ls assets/backgrounds/*.{jpg,jpeg,png,webp} 2>/dev/null | shuf -n1)
+          EXT="${RAWBG##*.}"
+          if [ "$EXT" = "webp" ]; then
+            BG="build/bg.png"
+            ffmpeg -y -i "$RAWBG" "$BG"
+          else
+            BG="$RAWBG"
+          fi
+          # get audio duration
+          DUR=$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 build/audio.mp3)
+          # make a vertical 1080x1920 (9:16) SHORT of that duration, mux audio
+          # cap at 175s to stay safely under YouTube Shorts 180s limit
+          ffmpeg -y -loop 1 -i "$BG" -i build/audio.mp3 \
+            -vf "scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2" \
+            -c:v libx264 -tune stillimage -pix_fmt yuv420p -r 25 \
+            -c:a aac -b:a 128k -shortest -t "$DUR" -t 175 \
+            build/video.mp4
+          echo "video built: $(ls -la build/video.mp4 | awk '{print $5}') bytes"
+
+      - name: Send Short metadata to webhook
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python tools/send_webhook.py "https://flow.sokt.io/func/scri445wtgHf"
