@@ -3,6 +3,48 @@
 """Send Short metadata to the webhook (n8n workflow trigger)."""
 import os, sys, json, urllib.request, random
 
+def upload_to_release(video_path, key, start, end):
+    """Upload build/video.mp4 to GitHub Release 'latest-short' and return URL."""
+    import subprocess, shutil
+    release_tag = "latest-short"
+    asset_name = f"short-nasheed-{key}-{start:03d}-{end:03d}.mp4"
+
+    try:
+        tmp_path = os.path.join("build", asset_name)
+        shutil.copy2(video_path, tmp_path)
+
+        subprocess.run(
+            ["gh", "release", "create", release_tag,
+             "--title", "Latest Short",
+             "--notes", "Auto-generated Short video (overwritten each run)"],
+            capture_output=True, text=True, timeout=30
+        )
+
+        result = subprocess.run(
+            ["gh", "release", "upload", release_tag, tmp_path, "--clobber"],
+            capture_output=True, text=True, timeout=60
+        )
+
+        if result.returncode != 0:
+            print(f"Release upload warning: {result.stderr[:200]}")
+            return ""
+
+        result = subprocess.run(
+            ["gh", "release", "view", release_tag, "--json", "assets"],
+            capture_output=True, text=True, timeout=30
+        )
+        if result.returncode == 0:
+            assets = json.loads(result.stdout).get("assets", [])
+            for asset in assets:
+                if asset.get("name") == asset_name:
+                    url = asset.get("url", "")
+                    print(f"Video uploaded: {url}")
+                    return url
+        return ""
+    except Exception as e:
+        print(f"Release upload failed: {e}")
+        return ""
+
 def main():
     webhook_url = sys.argv[1] if len(sys.argv) > 1 else os.environ.get(
         "SOKT_WEBHOOK_URL", "https://flow.sokt.io/func/scri445wtgHf"
@@ -38,15 +80,17 @@ def main():
 
     short_tags = ["قرآن", "تلاوة", "عمار_الخطيب", "اسلام", "Shorts", iden["name"].replace(" ", "_"), "قرآن_كريم", "تلاوات", "انشودة"]
 
-    # File size info
+    # File size info + upload to GitHub Release
     video_size = 0
+    video_url = ""
     video_path = os.path.join("build", "video.mp4")
     if os.path.exists(video_path):
         video_size = os.path.getsize(video_path)
+        video_url = upload_to_release(video_path, key, start, end)
 
     payload = {
         "link": raw_url,
-        "video_url": "",
+        "video_url": video_url,
         "name": short_name,
         "description": short_description,
         "tags": short_tags,
