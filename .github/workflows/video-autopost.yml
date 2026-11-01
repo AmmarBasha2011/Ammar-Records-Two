@@ -30,7 +30,9 @@ jobs:
         run: |
           python - <<'PY'
           import os, json, random
-          iden = json.load(open("115/iden.json", encoding="utf-8"))
+          import random as _r
+          nasheed_key = _r.choice(["115", "116"])
+          iden = json.load(open(nasheed_key + "/iden.json", encoding="utf-8"))
           segments = iden.get("segments", [])
           keys = [str(s["id"]) for s in segments]
           idn = iden
@@ -39,8 +41,8 @@ jobs:
           end_idx = start_idx + span - 1
           selected = segments[start_idx:end_idx+1]
           with open("pick.txt", "w", encoding="utf-8") as f:
-              f.write("115" + chr(10) + idn["name"] + chr(10) + str(start_idx+1) + chr(10) + str(end_idx+1) + chr(10))
-          print(f"picked nasheed 115 segments {start_idx+1}-{end_idx+1} (SHORT)")
+              f.write(nasheed_key + chr(10) + idn["name"] + chr(10) + str(start_idx+1) + chr(10) + str(end_idx+1) + chr(10))
+          print(f"picked nasheed {nasheed_key} segments {start_idx+1}-{end_idx+1} (SHORT)")
           PY
 
       - name: Build video with ffmpeg
