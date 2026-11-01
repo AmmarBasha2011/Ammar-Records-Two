@@ -213,11 +213,6 @@ python tools/render_video.py
 # الناتج: build/video.mp4
 ```
 
-### اختبار webhook:
-```bash
-python tools/send_webhook.py "https://flow.sokt.io/func/scri445wtgHf"
-```
-
 ---
 
 ## 📝 ملاحظات
@@ -250,4 +245,4 @@ python tools/send_webhook.py "https://flow.sokt.io/func/scri445wtgHf"
 **آخر تحديث:** 30 أكتوبر 2026
 **الريبو:** https://github.com/AmmarBasha2011/Ammar-Records-Two
 **القناة:** INEX Team (YouTube)
-**القارئ:** عمار الخطيب (Ammar Al-Khateeb)
+**القارئ:** عمار الخطيب (Ammar Elkhateeb)
